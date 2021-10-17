@@ -1,0 +1,4 @@
+server:
+  port: 8080
+
+server-prefix: http://localhost:8080
