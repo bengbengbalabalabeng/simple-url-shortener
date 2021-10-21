@@ -1,17 +1,17 @@
 package org.baicaixiaozhan.simpleurlshortener.service.impl;
 
-import com.google.common.hash.Hashing;
 import org.baicaixiaozhan.simpleurlshortener.exception.UserPerceivableException;
 import org.baicaixiaozhan.simpleurlshortener.service.UrlShortenerService;
+import org.baicaixiaozhan.simpleurlshortener.util.UniqueNumberBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.stereotype.Service;
 
 import java.net.URI;
-import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 
 /**
@@ -21,17 +21,20 @@ import java.util.Objects;
  * @since 1.0.0
  */
 @Service
-public class HashUrlShortener implements UrlShortenerService {
+public class Base62UrlShortener implements UrlShortenerService {
 
-    private static final Logger log = LoggerFactory.getLogger(HashUrlShortener.class);
+    private static final Logger log = LoggerFactory.getLogger(Base62UrlShortener.class);
 
     @Value("${server-prefix}")
     private String serverPrefix;
     private Cache cache;
     private final CacheManager cacheManager;
+    @Qualifier("simpleUniqueNumberBuilder")
+    private final UniqueNumberBuilder<String> uniqueNumberBuilder;
 
-    public HashUrlShortener(CacheManager cacheManager) {
+    public Base62UrlShortener(CacheManager cacheManager, UniqueNumberBuilder<String> uniqueNumberBuilder) {
         this.cacheManager = cacheManager;
+        this.uniqueNumberBuilder = uniqueNumberBuilder;
         this.cache = this.cacheManager.getCache("simpleCache");
     }
 
@@ -44,10 +47,9 @@ public class HashUrlShortener implements UrlShortenerService {
     @Override
     public String buildShortUrl(String longUrl) {
         if (isHttpOrHttps(longUrl)) {
-            String shortCode = Hashing.murmur3_32_fixed()
-                    .hashString(longUrl, StandardCharsets.UTF_8).toString();
+            String shortCode = uniqueNumberBuilder.build();
             cache.put(shortCode, longUrl);
-            return serverPrefix + "/api/shortUrl/" + shortCode;
+            return serverPrefix + "/api/shortUrl/decimal2Base62/" + shortCode;
         }
         throw new UserPerceivableException("Illegal URL.");
     }
